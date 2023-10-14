@@ -10,7 +10,7 @@ import (
 	"github.com/lordewans/api-key-generator/pkg/generate"
 )
 
-const defaultPort = "0000"
+const defaultPort = "9080"
 
 func main() {
 	ch := make(chan bool)

@@ -127,8 +127,9 @@ func (db *DB) VerifyKey() gin.HandlerFunc {
 		api, apiKey := c.Param("api"), c.Param("api-key")
 		collection, ctx, cancel := db.ctxDeferHelper(api)
 		defer cancel()
+		fmt.Printf("%s, %s\n", api, apiKey)
 
-		if err := collection.FindOne(ctx, bson.M{"api-key": apiKey}).Decode(&user); err != nil {
+		if err := collection.FindOne(ctx, bson.M{"api_key": apiKey}).Decode(&user); err != nil {
 			fmt.Printf("Found 0 results for API Key: %s\n", apiKey)
 			c.JSON(http.StatusUnauthorized, gin.H{"status": 401, "message": "Authentication failed"})
 			internal.Handle(err)
