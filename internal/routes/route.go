@@ -12,8 +12,8 @@ var (
 func UseRoute(r *gin.Engine) {
 	user := r.Group("/user")
 
-	user.POST("/create", db.CreateUser())
-	user.DELETE("/:_id")
+	user.POST("/key=:api-key", db.VerifyKeyAPI(), db.CreateUser())
+	user.DELETE("/api=:api/id=:_id/key=:api-key", db.VerifyKeyAPI(), db.DeleteUser())
 
-	r.GET("api/:api-key")
+	r.GET("verify/api=:api/key=:api-key", db.VerifyKey())
 }

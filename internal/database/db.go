@@ -13,6 +13,8 @@ import (
 	"github.com/lordewans/api-key-generator/internal/models"
 	"github.com/lordewans/api-key-generator/internal/responses"
 	"github.com/lordewans/api-key-generator/pkg/generate"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -83,12 +85,67 @@ func (db *DB) CreateUser() gin.HandlerFunc {
 			API:      user.API,
 		}
 
-		res, cancel, err := db.resErrHelper("users", newUser)
+		res, cancel, err := db.resErrHelper(user.API, newUser)
 		defer cancel()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, responses.UserResponse{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}})
 			return
 		}
 		c.JSON(http.StatusCreated, responses.UserResponse{Status: http.StatusCreated, Message: "success", Data: map[string]interface{}{"data": res}})
+	}
+}
+
+func (db *DB) DeleteUser() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		api, id := c.Param("api"), c.Param("_id")
+		collection, ctx, cancel := db.ctxDeferHelper(api)
+		defer cancel()
+
+		ID, _ := primitive.ObjectIDFromHex(id)
+
+		result, err := collection.DeleteOne(ctx, bson.M{"_id": ID})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, responses.UserResponse{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}})
+			return
+		}
+
+		if result.DeletedCount < 1 {
+			c.JSON(http.StatusNotFound, responses.UserResponse{Status: http.StatusNotFound, Message: "error", Data: map[string]interface{}{"data": "User with specified ID not found!"}})
+			return
+		}
+
+		c.JSON(http.StatusOK, responses.UserResponse{Status: http.StatusOK, Message: "success", Data: map[string]interface{}{"data": "User successfully deleted!"}})
+	}
+}
+
+func (db *DB) VerifyKey() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var user models.User
+		api, apiKey := c.Param("api"), c.Param("api-key")
+		collection, ctx, cancel := db.ctxDeferHelper(api)
+		defer cancel()
+
+		if err := collection.FindOne(ctx, bson.M{"api-key": apiKey}).Decode(&user); err != nil {
+			fmt.Printf("Found 0 results for API Key: %s\n", apiKey)
+			c.JSON(http.StatusUnauthorized, gin.H{"status": 401, "message": "Authentication failed"})
+			internal.Handle(err)
+			return
+		}
+	}
+}
+
+func (db *DB) VerifyKeyAPI() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var user models.User
+		api, apiKey := "api-key-generator", c.Param("api-key")
+		collection, ctx, cancel := db.ctxDeferHelper(api)
+		defer cancel()
+
+		if err := collection.FindOne(ctx, bson.M{"api_key": apiKey}).Decode(&user); err != nil {
+			fmt.Printf("Found 0 results for API Key: %s\n", apiKey)
+			c.JSON(http.StatusUnauthorized, gin.H{"status": 401, "message": "Authentication failed"})
+			internal.Handle(err)
+			return
+		}
 	}
 }
